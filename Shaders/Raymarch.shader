@@ -53,12 +53,15 @@ Shader "Hidden/Raymarch"
             uniform float4x4 _CamFrustum, _CamToWorld;
 
             uniform float3 _CamPosition;
-            const float CIRCLE = 0;
-            const float BOX = 1;
+            #define CIRCLE 0.0
+            #define BOX 1
+            #define DONUT = 2.0
+            #define epsilon = .1
             uniform int objectCount;
             uniform float4x4 positions[SIZE];
             uniform float3 colors[SIZE];
             uniform float types[SIZE];
+            uniform float extraData[SIZE];
             uniform float3 _Light;
 
             struct HitInfo {
@@ -80,56 +83,9 @@ Shader "Hidden/Raymarch"
             float3 normalCircle(float3 localPosition){
                 return normalize(localPosition);
             }
-
             float SDFCircle(float3 localPosition){
                 return length(localPosition)-.5f;
             }
-
-            //float3 normalBox(float3 localPosition) {
-            //    float3 p = abs(localPosition);
-
-            //    if (p.x <= .5 && p.y <= .5){
-            //        return float3(0,0,sign(localPosition.z));
-            //    }
-
-            //    if (p.y <= .5&&p.z <= .5){
-            //        return float3(sign(localPosition.x),0,0);
-            //    }
-
-            //    if (p.x <= .5 && p.z <= .5){
-            //        return float3(0,sign(localPosition.y),0);
-            //    }
-
-            //    if (p.x <= .5){
-            //        return normalize(float3(0,sign(localPosition.y), sign(localPosition.z)));
-            //    }
-
-            //    if (p.y <= .5){
-            //        return normalize(float3(sign(localPosition.x),0, sign(localPosition.z)));
-            //    }
-
-            //    if (p.z <= .5){
-            //        return normalize(float3(sign(localPosition.z),sign(localPosition.y), 0));
-            //    }
-
-            //    if (p.x <= .5){
-            //        return float3(0,p.y-.5, p.z-.5);
-            //    }
-
-            //    if (p.y <= .5){
-            //        return float3(p.x-.5, 0,p.z-.5);
-            //    }
-
-            //    if (p.z <= .5){
-            //        return float3(p.x-.5, p.y-.5,0);
-            //    }
-
-            //    return normalize(float3(
-            //        sign(localPosition.x),
-            //        sign(localPosition.y),
-            //        sign(localPosition.z)
-            //    ));
-            //}
 
             float3 normalBox(float3 localPosition) {
                 float3 p = abs(localPosition);
@@ -147,25 +103,6 @@ Shader "Hidden/Raymarch"
                 // Ensure normalization of the normal vector
                 return normalize(n);
             }
-
-
-            //float SDFBox(float3 localPosition) {
-            //    float3 p = abs(localPosition);
-
-            //    if (p.x <= .5 && p.y <= .5){
-            //        return p.z-.5;
-            //    }
-
-            //    if (p.y <= .5&&p.z <= .5){
-            //        return p.x-.5;
-            //    }
-
-            //    if (p.x <= .5 && p.z <= .5){
-            //        return p.y-.5;
-            //    }
-
-            //    return length(float3(p.x-.5, p.y-.5,p.z-.5));
-            //}
             float SDFBox(float3 localPosition) {
                 float3 boxSize = float3(.5,.5,.5);
                 float3 d = abs(localPosition) - boxSize;
@@ -181,52 +118,51 @@ Shader "Hidden/Raymarch"
             }
 
 
-
-            float getDistance(float3 position, int type){
-                if (type == CIRCLE) return SDFCircle(position);
-                else return SDFBox(position);
+            float3 normalDonut(float3 localPosition) {
+                float3 closestPoint = normalize(float3(localPosition.x, 0,localPosition.z));
+                return normalize(localPosition - closestPoint);
+            }
+            float3 SDFDonut(float3 localPosition, float thickness){
+                float3 closestPoint = normalize(float3(localPosition.x, 0,localPosition.z));
+                return length(localPosition - closestPoint)-.25;
             }
 
-            float3 getDistance(float3 position, float4x4 mat, int type){
-                return getDistance(mul(mat,float4(position,1)), type);
+            float3 getNormal(float3 position, int index){
+                float type = types[index];
+                float3 pos = mul(positions[index], float4(position,1));
+
+                if (type == CIRCLE) return normalCircle(pos);
+                if (type == BOX) return normalBox(pos);
+                return normalDonut(pos);
             }
 
-            float3 getNormal(float3 position, int type){
-                if (type == CIRCLE) return normalCircle(position);
-                else return normalBox(position);
+            float getDistance(float3 position, int index){
+                float type = types[index];
+                float3 pos = mul(positions[index],float4(position, 1));
+                if (type == CIRCLE)return SDFCircle(pos);
+                if (type == BOX) return SDFBox(pos);
+                else return SDFDonut(pos, extraData[index]);
             }
-
-            float3 getNormal(float3 position, float4x4 mat, int type){
-                return getNormal(mul(mat,float4(position,1)), type);
-            }
-
             HitInfo getHitInfo(float3 position){
                 HitInfo info;
-                float dist = getDistance(position,positions[0], types[0]);                
+                float dist = getDistance(position, 0);                
                 float3 col = colors[0];
-                float3 totalCol = float3(0,0,0);
-                float3 normal = getNormal(position,positions[0],types[0]);
-                float totalWeight = 0;
+                float3 normal = getNormal(position, 0);
                 for (int i = 1; i < objectCount; i++){
                     float dist1 = dist;
-                    float dist2 = getDistance(position,positions[i],types[i]);
+                    float dist2 = getDistance(position,i);
                     if (dist2 == -500)continue;
                     float3 nextCol = colors[i];
-                    float3 nextNormal = getNormal(position,positions[i],types[i]);
+                    float3 nextNormal = getNormal(position, i);
                     dist = smoothMin(dist1,dist2,_Smoothing);
-                    float t = smoothstep(dist1,dist2, dist);
-                    float weight1 = abs(dist2-t)/_Smoothing;
-                    float weight2 = abs(dist1-t)/_Smoothing;
-                    totalCol += col * abs(weight1-weight2);
-                    totalCol += nextCol * abs(weight2-weight1);
-                    totalWeight += abs(weight1-weight2)+abs(weight2-weight1);
+                    float t = smoothstep(dist1, dist2, dist);
                     col = lerp(col, nextCol, t);
                     normal = lerp(normal,nextNormal,t);
                 }
                 info.dist = dist;
-                info.col = totalCol/totalWeight;
+                info.col = col;
                 info.normal = normal;
-                info.hit = dist <= .01;
+                info.hit = dist <= .001;
                 return info;
             }
 
@@ -239,6 +175,7 @@ Shader "Hidden/Raymarch"
                 direction = normalize(mul(_CamToWorld, -direction));
                 float3 position = origin;
                 float totalDistance = 0;
+                float oldDistance = -1;
                 for (int i = 0; i < _MaxSteps; i++){
                     HitInfo info = getHitInfo(position);
                     position += direction * info.dist;
@@ -246,6 +183,12 @@ Shader "Hidden/Raymarch"
                         float light = lerp(.5,1.0,dot(info.normal,-_Light));
                         return float4(info.col * light,1.0);
                     }
+                    if (oldDistance == -1) {
+                        oldDistance = info.dist;
+                        continue;
+                    }
+                    if (oldDistance < info.dist && oldDistance <= _OutlineTreshold) return float4(0.0,0.0,0.0,1.0);
+                    oldDistance = info.dist;
                 }
                 return tex2D(_MainTex, uv);
             }
