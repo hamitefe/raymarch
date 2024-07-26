@@ -1,21 +1,24 @@
 using UnityEngine;
 
 public class RaymarchObject : MonoBehaviour {
+    private Renderer renderer;
+
+    public float extraData;
+
+    private void Awake() {
+        renderer = GetComponent<Renderer>();
+    }
     public enum ShapeType {
         Circle = 0,
         Box = 1,
-        Donut = 2
-    }
-
-    public float GetExtraData() {
-        if (type == ShapeType.Donut) return transform.lossyScale.x;
-        return 0;
+        Torus = 2,
+        Capsule = 3
     }
     
     public Matrix4x4 worldToLocalMatrix { get {
-            return transform.worldToLocalMatrix;
+            return renderer.worldToLocalMatrix;
     } }
-
+    public Vector3 repetitions;
     public ShapeType type;
     public Color color;
 }

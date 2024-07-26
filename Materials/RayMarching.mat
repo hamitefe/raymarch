@@ -64,7 +64,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints:
-    - _MaxSteps: 100
+    - _MaxSteps: 700
     m_Floats:
     - _BumpScale: 1
     - _CircleRadius: 0.3
@@ -76,13 +76,13 @@ Material:
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _MaxDistance: 99914.71
+    - _MaxDistance: 100
     - _Metallic: 0
     - _Mode: 0
     - _OcclusionStrength: 1
-    - _OutlineTreshold: 0
+    - _OutlineTreshold: 0.1
     - _Parallax: 0.02
-    - _Smoothing: 3.81
+    - _Smoothing: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1
@@ -99,4 +99,6 @@ Material:
     - _Light: {r: -0.3213938, g: -0.76604444, b: 0.5566705, a: 0}
     - _Origin1: {r: -0.4771196, g: -0.24583979, b: -2.7, a: 0}
     - _Origin2: {r: 0.47599956, g: 0.24471979, b: -2.7, a: 0}
+    - _OutlineColor: {r: 1, g: 1, b: 1, a: 1}
+    - _Repetition: {r: 1, g: 1, b: 1, a: 3}
   m_BuildTextureStacks: []

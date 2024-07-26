@@ -14,6 +14,7 @@ public class Raymarch : MonoBehaviour {
     Matrix4x4[] matrices = new Matrix4x4[50];
     Color[] colors = new Color[50];
     float[] extraDatas = new float[50];
+    Vector4[] repetitions = new Vector4[50];
     private void OnRenderObject() {
         if (!cam) return;
         if (!mat) return;
@@ -25,9 +26,11 @@ public class Raymarch : MonoBehaviour {
             types[i] = (float)obj.type;
             
             colors[i] = obj.color;
-            extraDatas[i] = obj.GetExtraData();
+            extraDatas[i] = obj.extraData;
             matrices[i] = obj.worldToLocalMatrix;
+            repetitions[i] = obj.repetitions;
         }
+        mat.SetVectorArray("repetitions", repetitions);
         mat.SetMatrixArray("positions",matrices);
         mat.SetColorArray("colors", colors);
         mat.SetFloatArray("types", types);
